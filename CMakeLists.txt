@@ -16,8 +16,8 @@ find_library(TREE_SITTER tree-sitter HINTS deps/tree-sitter/lib)
 find_package(Threads REQUIRED)
 
 
-add_executable(c_language_server app/main.cpp deps/tree-sitter-c/parser.c lib/src/stack-graph-tree.cpp)
-add_executable(tst tests/syntax-tree-test.cpp deps/tree-sitter-c/parser.c lib/src/stack-graph-tree.cpp)
+add_executable(c_language_server app/main.cpp deps/tree-sitter-c/parser.c lib/src/stack-graph-tree.cpp lib/src/stack-graph-engine.cpp)
+add_executable(tst tests/syntax-tree-test.cpp deps/tree-sitter-c/parser.c lib/src/stack-graph-tree.cpp lib/src/stack-graph-engine.cpp)
 
 
 target_link_libraries(c_language_server ${TREE_SITTER})

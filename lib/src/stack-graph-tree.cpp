@@ -212,7 +212,8 @@ void build_stack_graph(vector<shared_ptr<StackGraphNode>> &stack, string &code, 
     }
     else if ((node.type() == "identifier" || node.type() == "field_identifier") && ctx.state == "declaration")
     {
-        auto symbol_node = new StackGraphNode(StackGraphNodeKind::SYMBOL, node.text(code));
+        auto symbol_node = new StackGraphNode(StackGraphNodeKind::SYMBOL, node.text(code), node.editorPosition());
+        symbol_node->parent = stack.back();
         symbol_node->jump_to = ctx.jump_to;
         symbol_node->_type = ctx.type;
         auto symbol_node_ptr = shared_ptr<StackGraphNode>(symbol_node);
@@ -222,7 +223,8 @@ void build_stack_graph(vector<shared_ptr<StackGraphNode>> &stack, string &code, 
     {
         if (ctx.state != "skip_compound")
         {
-            auto symbol_node = new StackGraphNode(StackGraphNodeKind::UNNAMED_SCOPE, "");
+            auto symbol_node = new StackGraphNode(StackGraphNodeKind::UNNAMED_SCOPE, "", node.editorPosition());
+            symbol_node->parent = stack.back();
             auto symbol_node_ptr = shared_ptr<StackGraphNode>(symbol_node);
             stack.back()->children.push_back(symbol_node_ptr);
             stack.push_back(symbol_node_ptr);
@@ -258,7 +260,7 @@ void build_stack_graph(vector<shared_ptr<StackGraphNode>> &stack, string &code, 
     }
     else if (node.type() == "translation_unit")
     {
-        auto sg_node = shared_ptr<StackGraphNode>(new StackGraphNode(StackGraphNodeKind::NAMED_SCOPE, "translation_unit"));
+        auto sg_node = shared_ptr<StackGraphNode>(new StackGraphNode(StackGraphNodeKind::NAMED_SCOPE, "translation_unit", node.editorPosition()));
         sg_node->_type = "root";
         stack.push_back(sg_node);
 
@@ -273,7 +275,8 @@ void build_stack_graph(vector<shared_ptr<StackGraphNode>> &stack, string &code, 
         auto kind = symbol_node != nullptr ? StackGraphNodeKind::NAMED_SCOPE : StackGraphNodeKind::UNNAMED_SCOPE;
         auto symbol_node_text = symbol_node != nullptr ? symbol_node->text(code) : "";
 
-        StackGraphNode *struct_node = new StackGraphNode(kind, symbol_node_text);
+        StackGraphNode *struct_node = new StackGraphNode(kind, symbol_node_text, node.editorPosition());
+        struct_node->parent = stack.back();
         struct_node->_type = symbol_node_text;
         auto struct_node_ptr = shared_ptr<StackGraphNode>(struct_node);
         stack.back()->children.push_back(struct_node_ptr);
@@ -309,7 +312,8 @@ void build_stack_graph(vector<shared_ptr<StackGraphNode>> &stack, string &code, 
     {
         auto kind = StackGraphNodeKind::NAMED_SCOPE;
 
-        StackGraphNode *function_node = new StackGraphNode(kind, "");
+        StackGraphNode *function_node = new StackGraphNode(kind, "", node.editorPosition());
+        function_node->parent = stack.back();
         auto function_node_ptr = shared_ptr<StackGraphNode>(function_node);
         stack.back()->children.push_back(function_node_ptr);
         stack.push_back(function_node_ptr);
@@ -331,7 +335,8 @@ void build_stack_graph(vector<shared_ptr<StackGraphNode>> &stack, string &code, 
         auto ref_text = node.text(code);
         ref_text = sanitize_translate_reference(ref_text);
 
-        auto ref_node = new StackGraphNode(StackGraphNodeKind::REFERENCE, ref_text);
+        auto ref_node = new StackGraphNode(StackGraphNodeKind::REFERENCE, ref_text, node.editorPosition());
+        ref_node->parent = stack.back();
         auto ref_node_ptr = shared_ptr<StackGraphNode>(ref_node);
 
         stack.back()->children.push_back(ref_node_ptr);

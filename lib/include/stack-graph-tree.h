@@ -48,13 +48,17 @@ namespace stack_graph
         StackGraphNodeKind kind;
         shared_ptr<StackGraphNode> jump_to;
         vector<shared_ptr<StackGraphNode>> children;
+        shared_ptr<StackGraphNode> parent;
+        Point location;
 
-        StackGraphNode(StackGraphNodeKind kind, string symbol)
+        StackGraphNode(StackGraphNodeKind kind, string symbol, Point location)
         {
             this->symbol = symbol;
             this->kind = kind;
             this->_type = "";
+            this->location = location;
             this->children = vector<shared_ptr<StackGraphNode>>();
+            this->parent = nullptr;
         }
 
         string repr();
