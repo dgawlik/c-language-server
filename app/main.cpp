@@ -9,23 +9,21 @@ using std::string;
 using std::stringstream;
 using std::vector;
 
-
 using stack_graph::Coordinate;
-using stack_graph::StackGraphEngine;
 using stack_graph::Point;
+using stack_graph::StackGraphEngine;
 
 int main()
 {
+    auto path = "/home/dominik/Code/intellisense/c-language-server/corpus/sample2";
     StackGraphEngine engine;
 
-    engine.loadFile("/home/dominik/Code/intellisense/c-language-server/corpus/sample1.c");
+    engine.loadDirectoryRecursive(path);
+    engine.crossLink();
 
-    Coordinate coord = Coordinate(36, 4 , "org.emp.name");
-
-    auto ret = engine.resolve(coord);
-
-    std::cout << "Result: " << "line - " << std::get<0>(*ret) << " column -" << std::get<1>(*ret) << std::endl;
-    
+    for(auto cl : engine.cross_links){
+        std::cout << cl.repr() << std::endl;
+    }
 
     return 0;
 }

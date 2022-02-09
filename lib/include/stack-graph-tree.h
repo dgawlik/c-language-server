@@ -38,7 +38,8 @@ namespace stack_graph
         NAMED_SCOPE,
         SYMBOL,
         REFERENCE,
-        UNNAMED_SCOPE
+        UNNAMED_SCOPE,
+        IMPORT
     };
 
     struct StackGraphNode

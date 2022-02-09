@@ -1,4 +1,7 @@
 
+
+int fact(int x);
+
 struct Address
 {                 
     string line1; 

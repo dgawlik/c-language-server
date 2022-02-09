@@ -4,26 +4,32 @@
 #include <fstream>
 #include <tuple>
 #include <sstream>
+#include <iostream>
 #include <string>
 #include <vector>
 #include <iostream>
+#include <filesystem>
+#include <regex>
+
+namespace fs = std::filesystem;
 
 using stack_graph::build_stack_graph_tree;
 using stack_graph::Coordinate;
 using stack_graph::CustomHash;
+using stack_graph::Point;
 using stack_graph::StackGraphEngine;
 using stack_graph::StackGraphNode;
 using stack_graph::StackGraphNodeKind;
 
 extern "C" TSLanguage *tree_sitter_c();
 
-void _index(shared_ptr<StackGraphNode> node, unordered_map<Coordinate, shared_ptr<StackGraphNode>, CustomHash> &map)
+void _index(string path, shared_ptr<StackGraphNode> node, unordered_map<Coordinate, shared_ptr<StackGraphNode>, CustomHash> &map)
 {
-    Coordinate coord(node->location.line, node->location.column, node->symbol);
+    Coordinate coord(path, node->symbol);
     map.insert({coord, node});
     for (auto ch : node->children)
     {
-        _index(ch, map);
+        _index(path, ch, map);
     }
 }
 
@@ -51,9 +57,11 @@ void StackGraphEngine::loadFile(string path)
     TSNode root_node = ts_tree_root_node(tree);
 
     auto sg_tree = build_stack_graph_tree(root_node, source_code);
+    sg_tree->symbol = path;
+    std::cout << sg_tree->repr() << std::endl;
 
-    this->symbol_tree = std::tuple<std::string, shared_ptr<StackGraphNode>>(path, sg_tree);
-    _index(sg_tree, this->node_table);
+    this->translation_units.insert({path, sg_tree});
+    _index(path, sg_tree, this->node_table);
 }
 
 string _pop_stack(string &stack)
@@ -107,7 +115,7 @@ shared_ptr<StackGraphNode> _find_in_children(shared_ptr<StackGraphNode> node, st
     return nullptr;
 }
 
-shared_ptr<Coordinate> StackGraphEngine::resolve(Coordinate coord)
+shared_ptr<Point> StackGraphEngine::resolve(Coordinate coord)
 {
     auto search = this->node_table.find(coord);
     if (search == this->node_table.end())
@@ -161,11 +169,228 @@ shared_ptr<Coordinate> StackGraphEngine::resolve(Coordinate coord)
 
     if (stack == "")
     {
-        Point p = current->location;
-        return shared_ptr<Coordinate>(new Coordinate(p.line, p.column, current->symbol));
+        return shared_ptr<Point>(new Point(current->location));
     }
     else
     {
         return nullptr;
+    }
+}
+
+void _walk_directory(string path, std::regex r, std::function<void(string)> cbk)
+{
+    for (const auto &entry : fs::directory_iterator(path))
+    {
+        if (entry.is_directory())
+        {
+            _walk_directory(entry.path().string(), r, cbk);
+        }
+        else
+        {
+            auto file = entry.path().filename().string();
+
+            if (std::regex_match(file, r))
+            {
+                cbk(entry.path());
+            }
+        }
+    }
+}
+
+void StackGraphEngine::loadDirectoryRecursive(string path)
+{
+
+    std::regex regex("[a-z0-9\\-_]*\\.(c|h)");
+    _walk_directory(path, regex, [&](string abs_path)
+                    { this->loadFile(abs_path); });
+}
+
+void _walk_tree(shared_ptr<StackGraphNode> node, std::function<bool(shared_ptr<StackGraphNode>)> pred, std::function<void(shared_ptr<StackGraphNode>)> cbk)
+{
+    if (pred(node))
+    {
+        cbk(node);
+    }
+    for (auto ch : node->children)
+    {
+        _walk_tree(ch, pred, cbk);
+    }
+}
+
+vector<string> StackGraphEngine::importsForTranslationUnit(string path)
+{
+    vector<string> lst;
+
+    try
+    {
+        auto root = this->translation_units.at(path);
+        _walk_tree(
+            root,
+            [](shared_ptr<StackGraphNode> node)
+            { return node->kind == StackGraphNodeKind::IMPORT; },
+            [&](shared_ptr<StackGraphNode> node)
+            { lst.push_back(node->symbol); });
+    }
+    catch (std::out_of_range ex)
+    {
+    }
+
+    return lst;
+}
+
+vector<shared_ptr<StackGraphNode>> StackGraphEngine::exportedDefinitionsForTranslationUnit(string path)
+{
+    vector<shared_ptr<StackGraphNode>> lst;
+
+    auto itr = this->translation_units.find(path);
+    if (itr == this->translation_units.end())
+    {
+        return lst;
+    }
+
+    auto val = itr->second;
+
+    for (auto ch : val->children)
+    {
+        if (ch->kind == StackGraphNodeKind::NAMED_SCOPE)
+        {
+            lst.push_back(ch);
+        }
+    }
+
+    return lst;
+}
+
+vector<shared_ptr<StackGraphNode>> StackGraphEngine::symbolsForTranslationUnit(string path)
+{
+    vector<shared_ptr<StackGraphNode>> lst;
+
+    auto itr = this->translation_units.find(path);
+    if (itr == this->translation_units.end())
+    {
+        return lst;
+    }
+
+    _walk_tree(
+        itr->second,
+        [](shared_ptr<StackGraphNode> node)
+        { return node->kind == StackGraphNodeKind::SYMBOL; },
+        [&](shared_ptr<StackGraphNode> node)
+        { lst.push_back(node); });
+
+    return lst;
+}
+
+string StackGraphEngine::resolveImport(string import)
+{
+
+    for (auto &entry : this->translation_units)
+    {
+        if (entry.first.find(import) != string::npos)
+        {
+            return entry.first;
+        }
+    }
+
+    return "";
+}
+
+void StackGraphEngine::_visitUnitsInTopologicalOrder(
+    unordered_map<string, unordered_map<string, shared_ptr<StackGraphNode>>>& cache,
+    unordered_set<string>& visited,
+    unordered_map<string, string>& h_to_c,
+    string unit)
+{
+
+    if (visited.find(unit) != visited.end())
+    {
+        return;
+    }
+
+    unordered_map<string, shared_ptr<StackGraphNode>> transitive_defs;
+
+    for (auto import : this->importsForTranslationUnit(unit))
+    {
+        auto path_import = this->resolveImport(import);
+
+        if (path_import != "")
+        {
+
+            if (cache.find(path_import) == cache.end())
+            {
+
+                this->_visitUnitsInTopologicalOrder(cache, visited, h_to_c, path_import);
+            }
+
+            auto defs = cache.find(path_import)->second;
+            for (auto &entry : defs)
+            {
+                transitive_defs.insert(entry);
+            }
+        }
+    }
+
+    for (auto &def : this->exportedDefinitionsForTranslationUnit(unit))
+    {
+        transitive_defs.insert({def->symbol, def});
+    }
+
+    if (h_to_c.find(unit) != h_to_c.end())
+    {
+        auto c_file = h_to_c.find(unit)->second;
+
+        for (auto &def : this->exportedDefinitionsForTranslationUnit(c_file))
+        {
+            transitive_defs.insert({def->symbol, def});
+        }
+    }
+
+    // now all the transitive definitions are loaded
+
+    for (auto &sym : this->symbolsForTranslationUnit(unit))
+    {
+        if (transitive_defs.find(sym->symbol) != transitive_defs.end())
+        {
+            auto def =  transitive_defs.find(sym->symbol)->second;
+            sym->jump_to = def;
+            this->cross_links.push_back(CrossLink(sym, def));
+        }
+    }
+
+    visited.insert(unit);
+    cache.insert({unit, transitive_defs});
+}
+
+void StackGraphEngine::crossLink()
+{
+
+    unordered_map<string, string> h_to_c;
+
+    for (auto &entry : this->translation_units)
+    {
+        auto k = entry.first;
+        auto v = entry.second;
+
+        if (std::regex_match(fs::path(k).filename().string(), std::regex("[a-z0-9\\-_]*\\.c")))
+        {
+            for (auto &import : this->importsForTranslationUnit(k))
+            {
+                auto abs_import = this->resolveImport(import);
+
+                if (std::regex_match(import, std::regex("[a-z0-9\\-_]*\\.h")) && abs_import != "")
+                {
+                    h_to_c.insert({abs_import, k});
+                }
+            }
+        }
+    }
+
+    unordered_map<string, unordered_map<string, shared_ptr<StackGraphNode>>> cache;
+    unordered_set<string> visited;
+    this->cross_links.clear();
+
+    for (auto &entry : this->translation_units)
+    {
+        _visitUnitsInTopologicalOrder(cache, visited, h_to_c, entry.first);
     }
 }

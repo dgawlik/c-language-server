@@ -21,7 +21,6 @@ using stack_graph::Range;
 using stack_graph::StackGraphNode;
 using stack_graph::StackGraphNodeKind;
 
-
 struct TSNodeWrapper;
 void _do_print_repr(stringstream &ss, TSNodeWrapper node, int level);
 
@@ -107,23 +106,21 @@ void _do_print_repr(stringstream &ss, TSNodeWrapper node, int level)
     }
 }
 
-
-
 const char *kind_names[] = {
     "NAMED_SCOPE",
     "SYMBOL",
     "REFERENCE",
-    "UNNAMED_SCOPE"};
-
+    "UNNAMED_SCOPE",
+    "IMPORT"};
 
 void _do_print_repr_stree(stringstream &ss, StackGraphNode node, int level);
 
-std::string StackGraphNode::repr(){
+std::string StackGraphNode::repr()
+{
     stringstream ss;
     _do_print_repr_stree(ss, *this, 0);
     return ss.str();
 }
-
 
 void _do_print_repr_stree(stringstream &ss, StackGraphNode node, int level)
 {
@@ -179,7 +176,7 @@ shared_ptr<StackGraphNode> try_resolve_type(vector<shared_ptr<StackGraphNode>> c
             }
         }
     }
-    return it;
+    return nullptr;
 }
 
 string sanitize_translate_reference(string text)
@@ -195,7 +192,7 @@ string sanitize_translate_reference(string text)
     return std::regex_replace(text, p_regex, "");
 }
 
-void build_stack_graph(vector<shared_ptr<StackGraphNode>> &stack, string &code, TSNodeWrapper node, _Context& ctx)
+void build_stack_graph(vector<shared_ptr<StackGraphNode>> &stack, string &code, TSNodeWrapper node, _Context &ctx)
 {
     if (node.type() == "function_declarator" && ctx.state == "function_definition")
     {
@@ -330,6 +327,21 @@ void build_stack_graph(vector<shared_ptr<StackGraphNode>> &stack, string &code, 
 
         stack.pop_back();
     }
+    else if (node.type() == "preproc_include")
+    {
+        auto include_node = node.childByType("string_literal");
+        if(include_node == nullptr){
+            include_node = node.childByType("system_lib_string");
+        }
+        
+        auto text = include_node->text(code);
+        text = text.substr(1, text.size()-2);
+
+        auto n = shared_ptr<StackGraphNode>(new StackGraphNode(StackGraphNodeKind::IMPORT, text, node.editorPosition()));
+        n->parent = stack.back();
+        stack.back()->children.push_back(n);
+
+    }
     else if (node.type() == "identifier" || node.type() == "call_expression" || node.type() == "field_expression" || node.type() == "pointer_expression" || node.type() == "subscript_expression")
     {
         auto ref_text = node.text(code);
@@ -350,7 +362,8 @@ void build_stack_graph(vector<shared_ptr<StackGraphNode>> &stack, string &code, 
     }
 }
 
-shared_ptr<StackGraphNode> stack_graph::build_stack_graph_tree(TSNode root, const char* source_code){
+shared_ptr<StackGraphNode> stack_graph::build_stack_graph_tree(TSNode root, const char *source_code)
+{
 
     vector<shared_ptr<StackGraphNode>> stack;
     string code = source_code;
