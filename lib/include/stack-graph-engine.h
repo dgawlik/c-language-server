@@ -18,6 +18,7 @@ using std::unordered_set;
 namespace stack_graph
 {
     typedef tuple<string, string> Coordinate;
+    typedef tuple<string, uint32_t, uint32_t> Resolution;
 
     class CustomHash
     {
@@ -74,7 +75,7 @@ namespace stack_graph
 
         string resolveImport(string import);
 
-        shared_ptr<Point> resolve(Coordinate c);
+        shared_ptr<Resolution> resolve(Coordinate c);
 
         vector<string> importsForTranslationUnit(string path);
 

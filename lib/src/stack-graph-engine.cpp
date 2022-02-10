@@ -15,6 +15,7 @@ namespace fs = std::filesystem;
 
 using stack_graph::build_stack_graph_tree;
 using stack_graph::Coordinate;
+using stack_graph::Resolution;
 using stack_graph::CustomHash;
 using stack_graph::Point;
 using stack_graph::StackGraphEngine;
@@ -115,7 +116,7 @@ shared_ptr<StackGraphNode> _find_in_children(shared_ptr<StackGraphNode> node, st
     return nullptr;
 }
 
-shared_ptr<Point> StackGraphEngine::resolve(Coordinate coord)
+shared_ptr<Resolution> StackGraphEngine::resolve(Coordinate coord)
 {
     auto search = this->node_table.find(coord);
     if (search == this->node_table.end())
@@ -169,7 +170,12 @@ shared_ptr<Point> StackGraphEngine::resolve(Coordinate coord)
 
     if (stack == "")
     {
-        return shared_ptr<Point>(new Point(current->location));
+        auto it = current;
+        while(it->parent != nullptr)
+            it = it->parent;
+
+        auto res = new Resolution(it->symbol, current->location.line, current->location.column);
+        return shared_ptr<Resolution>(res);
     }
     else
     {

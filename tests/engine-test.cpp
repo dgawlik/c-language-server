@@ -7,6 +7,7 @@
 
 using stack_graph::StackGraphNode;
 using stack_graph::StackGraphEngine;
+using stack_graph::Coordinate;
 
 
 
@@ -51,7 +52,21 @@ TEST(StackGraphEngine, FindsSymbolsInTU)
   engine.loadDirectoryRecursive(path);
 
   auto symbols = engine.symbolsForTranslationUnit("/home/dominik/Code/intellisense/c-language-server/corpus/sample2/def2.h");
+}
 
+TEST(StackGraphEngine, ResolvesReferenceCrossFile)
+{
+  auto path = "/home/dominik/Code/intellisense/c-language-server/corpus/sample2";
+  StackGraphEngine engine;
+
+  engine.loadDirectoryRecursive(path);
+  engine.crossLink();
+
+  auto resolution = engine.resolve(Coordinate("/home/dominik/Code/intellisense/c-language-server/corpus/sample2/main.c", "org.emp.name"));
+
+  ASSERT_EQ("/home/dominik/Code/intellisense/c-language-server/corpus/sample2/def1.h", std::get<0>(*resolution));
+  ASSERT_EQ(3, std::get<1>(*resolution));
+  ASSERT_EQ(11, std::get<2>(*resolution));
 }
 
 
