@@ -126,7 +126,7 @@ shared_ptr<Resolution> StackGraphEngine::resolve(Coordinate coord)
 
     auto value = search->second;
 
-    if (value->kind != StackGraphNodeKind::REFERENCE)
+    if (value->kind == StackGraphNodeKind::NAMED_SCOPE)
     {
         return nullptr;
     }

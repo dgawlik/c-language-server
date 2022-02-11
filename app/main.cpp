@@ -21,9 +21,8 @@ int main()
     engine.loadDirectoryRecursive(path);
     engine.crossLink();
 
-    for(auto cl : engine.cross_links){
-        std::cout << cl.repr() << std::endl;
-    }
+    auto resolution = engine.resolve(Coordinate("/home/dominik/Code/intellisense/c-language-server/corpus/sample2/main.c", "Organization"));
+
 
     return 0;
 }

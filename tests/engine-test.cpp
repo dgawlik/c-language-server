@@ -69,4 +69,19 @@ TEST(StackGraphEngine, ResolvesReferenceCrossFile)
   ASSERT_EQ(11, std::get<2>(*resolution));
 }
 
+TEST(StackGraphEngine, WorksForSymbolsAsWell)
+{
+  auto path = "/home/dominik/Code/intellisense/c-language-server/corpus/sample2";
+  StackGraphEngine engine;
+
+  engine.loadDirectoryRecursive(path);
+  engine.crossLink();
+
+  auto resolution = engine.resolve(Coordinate("/home/dominik/Code/intellisense/c-language-server/corpus/sample2/main.c", "Organization"));
+
+  ASSERT_EQ("/home/dominik/Code/intellisense/c-language-server/corpus/sample2/def2.h", std::get<0>(*resolution));
+  ASSERT_EQ(6, std::get<1>(*resolution));
+  ASSERT_EQ(0, std::get<2>(*resolution));
+}
+
 
