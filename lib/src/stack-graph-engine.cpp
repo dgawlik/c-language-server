@@ -15,7 +15,6 @@ namespace fs = std::filesystem;
 
 using stack_graph::build_stack_graph_tree;
 using stack_graph::Coordinate;
-using stack_graph::Resolution;
 using stack_graph::CustomHash;
 using stack_graph::Point;
 using stack_graph::StackGraphEngine;
@@ -26,7 +25,7 @@ extern "C" TSLanguage *tree_sitter_c();
 
 void _index(string path, shared_ptr<StackGraphNode> node, unordered_map<Coordinate, shared_ptr<StackGraphNode>, CustomHash> &map)
 {
-    Coordinate coord(path, node->symbol);
+    Coordinate coord(path, node->location.line, node->location.column);
     map.insert({coord, node});
     for (auto ch : node->children)
     {
@@ -59,7 +58,7 @@ void StackGraphEngine::loadFile(string path)
 
     auto sg_tree = build_stack_graph_tree(root_node, source_code);
     sg_tree->symbol = path;
-    std::cout << sg_tree->repr() << std::endl;
+    // std::cout << sg_tree->repr() << std::endl;
 
     this->translation_units.insert({path, sg_tree});
     _index(path, sg_tree, this->node_table);
@@ -79,6 +78,26 @@ string _pop_stack(string &stack)
         string ret = stack.substr(0, pos_end);
         stack = stack.substr(pos_end + 1, string::npos);
         return ret;
+    }
+}
+
+bool _contains_segment(string stack, string segment)
+{
+    size_t pos_begin = 0, pos_end;
+    while(true){
+        pos_end = stack.find(".", pos_begin);
+        string seg = stack.substr(pos_begin, pos_end);
+
+        if(seg == segment){
+            return true;
+        }
+
+        if(pos_end == string::npos){
+            return false;
+        }
+        else {
+            pos_begin = pos_end + 1;
+        }
     }
 }
 
@@ -116,7 +135,7 @@ shared_ptr<StackGraphNode> _find_in_children(shared_ptr<StackGraphNode> node, st
     return nullptr;
 }
 
-shared_ptr<Resolution> StackGraphEngine::resolve(Coordinate coord)
+shared_ptr<Coordinate> StackGraphEngine::resolve(Coordinate coord)
 {
     auto search = this->node_table.find(coord);
     if (search == this->node_table.end())
@@ -133,8 +152,8 @@ shared_ptr<Resolution> StackGraphEngine::resolve(Coordinate coord)
 
     string stack = value->symbol;
 
-    std::cout << "Looking up reference" << std::endl;
-    std::cout << "Stack: " << stack << std::endl;
+    // std::cout << "Looking up reference" << std::endl;
+    // std::cout << "Stack: " << stack << std::endl;
 
     shared_ptr<StackGraphNode> current = value;
 
@@ -154,7 +173,7 @@ shared_ptr<Resolution> StackGraphEngine::resolve(Coordinate coord)
         {
             auto next_val = current->jump_to;
             current = next_val;
-            std::cout << "Node Jump" << std::endl;
+            // std::cout << "Node Jump" << std::endl;
         }
         else if (current->kind == StackGraphNodeKind::NAMED_SCOPE)
         {
@@ -165,17 +184,17 @@ shared_ptr<Resolution> StackGraphEngine::resolve(Coordinate coord)
             current = next_val;
         }
 
-        std::cout << "Stack: " << stack << std::endl;
+        // std::cout << "Stack: " << stack << std::endl;
     }
 
     if (stack == "")
     {
         auto it = current;
-        while(it->parent != nullptr)
+        while (it->parent != nullptr)
             it = it->parent;
 
-        auto res = new Resolution(it->symbol, current->location.line, current->location.column);
-        return shared_ptr<Resolution>(res);
+        auto res = new Coordinate(it->symbol, current->location.line, current->location.column);
+        return shared_ptr<Coordinate>(res);
     }
     else
     {
@@ -302,9 +321,9 @@ string StackGraphEngine::resolveImport(string import)
 }
 
 void StackGraphEngine::_visitUnitsInTopologicalOrder(
-    unordered_map<string, unordered_map<string, shared_ptr<StackGraphNode>>>& cache,
-    unordered_set<string>& visited,
-    unordered_map<string, string>& h_to_c,
+    unordered_map<string, unordered_map<string, shared_ptr<StackGraphNode>>> &cache,
+    unordered_set<string> &visited,
+    unordered_map<string, string> &h_to_c,
     string unit)
 {
 
@@ -357,7 +376,7 @@ void StackGraphEngine::_visitUnitsInTopologicalOrder(
     {
         if (transitive_defs.find(sym->symbol) != transitive_defs.end())
         {
-            auto def =  transitive_defs.find(sym->symbol)->second;
+            auto def = transitive_defs.find(sym->symbol)->second;
             sym->jump_to = def;
             this->cross_links.push_back(CrossLink(sym, def));
         }
@@ -370,7 +389,7 @@ void StackGraphEngine::_visitUnitsInTopologicalOrder(
 void StackGraphEngine::crossLink()
 {
 
-    unordered_map<string, string> h_to_c;
+    this->h_to_c.clear();
 
     for (auto &entry : this->translation_units)
     {
@@ -385,7 +404,7 @@ void StackGraphEngine::crossLink()
 
                 if (std::regex_match(import, std::regex("[a-z0-9\\-_]*\\.h")) && abs_import != "")
                 {
-                    h_to_c.insert({abs_import, k});
+                    this->h_to_c.insert({abs_import, k});
                 }
             }
         }
@@ -399,4 +418,57 @@ void StackGraphEngine::crossLink()
     {
         _visitUnitsInTopologicalOrder(cache, visited, h_to_c, entry.first);
     }
+}
+
+vector<shared_ptr<Coordinate>> StackGraphEngine::findUsages(Coordinate coord)
+{
+    vector<shared_ptr<Coordinate>> lst;
+    auto search = this->node_table.find(coord);
+    if (search == this->node_table.end())
+    {
+        return lst;
+    }
+
+    auto value = search->second;
+
+    if (value->kind == StackGraphNodeKind::NAMED_SCOPE)
+    {
+        for (auto &kv : this->node_table)
+        {
+            auto v = kv.second;
+            if (v->kind == StackGraphNodeKind::SYMBOL && v->jump_to != nullptr && v->jump_to == value)
+            {
+
+                auto it = v;
+                while (it->parent != nullptr)
+                {
+                    it = it->parent;
+                }
+
+                auto res = new Coordinate(it->symbol, v->location.line, v->location.column);
+                lst.push_back(shared_ptr<Coordinate>(res));
+            }
+        }
+    }
+    else if (value->kind == StackGraphNodeKind::SYMBOL)
+    {
+        for (auto &kv : this->node_table)
+        {
+            auto v = kv.second;
+            if (v->kind == StackGraphNodeKind::REFERENCE && _contains_segment(v->symbol, value->symbol))
+            {
+
+                auto it = v;
+                while (it->parent != nullptr)
+                {
+                    it = it->parent;
+                }
+
+                auto res = new Coordinate(it->symbol, v->location.line, v->location.column);
+                lst.push_back(shared_ptr<Coordinate>(res));
+            }
+        }
+    }
+
+    return lst;
 }

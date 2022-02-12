@@ -17,8 +17,7 @@ using std::unordered_set;
 
 namespace stack_graph
 {
-    typedef tuple<string, string> Coordinate;
-    typedef tuple<string, uint32_t, uint32_t> Resolution;
+    typedef tuple<string, uint32_t, uint32_t> Coordinate;
 
     class CustomHash
     {
@@ -27,39 +26,45 @@ namespace stack_graph
         std::size_t operator()(const Coordinate &k) const
         {
             std::size_t h1 = std::hash<string>{}(std::get<0>(k));
-            std::size_t h2 = std::hash<string>{}(std::get<1>(k));
-            return 31 * h2 + h1;
+            std::size_t h2 = std::hash<uint32_t>{}(std::get<1>(k));
+            std::size_t h3 = std::hash<uint32_t>{}(std::get<2>(k));
+            return 31 * 31 * h3 + 31 * h2 + h1;
         }
     };
 
-    struct CrossLink {
+    struct CrossLink
+    {
         shared_ptr<StackGraphNode> symbol;
         shared_ptr<StackGraphNode> definition;
 
-        CrossLink(shared_ptr<StackGraphNode> symbol, shared_ptr<StackGraphNode> definition){
+        CrossLink(shared_ptr<StackGraphNode> symbol, shared_ptr<StackGraphNode> definition)
+        {
             this->symbol = symbol;
             this->definition = definition;
         }
 
-        string repr(){
+        string repr()
+        {
             stringstream ss;
 
             shared_ptr<StackGraphNode> it = symbol;
-            while(it->parent != nullptr){
+            while (it->parent != nullptr)
+            {
                 it = it->parent;
             }
 
             auto sym_file = it->symbol;
 
-            it=definition;
-            while(it->parent != nullptr){
+            it = definition;
+            while (it->parent != nullptr)
+            {
                 it = it->parent;
             }
 
             auto def_file = it->symbol;
 
             ss << "Cross Link {" << sym_file << "#" << symbol->symbol << " ~~> " << def_file << "#" << definition->symbol << "}";
-            return ss.str(); 
+            return ss.str();
         }
     };
 
@@ -68,6 +73,7 @@ namespace stack_graph
         unordered_map<Coordinate, shared_ptr<StackGraphNode>, CustomHash> node_table;
         unordered_map<string, shared_ptr<StackGraphNode>> translation_units;
         vector<CrossLink> cross_links;
+        unordered_map<string, string> h_to_c;
 
         void loadFile(string path);
 
@@ -75,7 +81,7 @@ namespace stack_graph
 
         string resolveImport(string import);
 
-        shared_ptr<Resolution> resolve(Coordinate c);
+        shared_ptr<Coordinate> resolve(Coordinate c);
 
         vector<string> importsForTranslationUnit(string path);
 
@@ -83,12 +89,14 @@ namespace stack_graph
 
         vector<shared_ptr<StackGraphNode>> symbolsForTranslationUnit(string path);
 
-        void _visitUnitsInTopologicalOrder(unordered_map<string, unordered_map<string, shared_ptr<StackGraphNode>>>& cache,
-                                           unordered_set<string>& visited,
-                                           unordered_map<string, string>& h_to_c,
+        void _visitUnitsInTopologicalOrder(unordered_map<string, unordered_map<string, shared_ptr<StackGraphNode>>> &cache,
+                                           unordered_set<string> &visited,
+                                           unordered_map<string, string> &h_to_c,
                                            string unit);
 
         void crossLink();
+
+        vector<shared_ptr<Coordinate>> findUsages(Coordinate coord);
     };
 }
 

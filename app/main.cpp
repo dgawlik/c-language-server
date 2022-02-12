@@ -21,7 +21,7 @@ int main()
     engine.loadDirectoryRecursive(path);
     engine.crossLink();
 
-    auto resolution = engine.resolve(Coordinate("/home/dominik/Code/intellisense/c-language-server/corpus/sample2/main.c", "Organization"));
+    auto resolution = engine.resolve(Coordinate("/home/dominik/Code/intellisense/c-language-server/corpus/sample2/main.c", 10 ,4 ));
 
 
     return 0;

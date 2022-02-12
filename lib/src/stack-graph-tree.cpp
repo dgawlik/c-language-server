@@ -146,6 +146,7 @@ struct _Context
     string state;
     shared_ptr<StackGraphNode> jump_to;
     string type;
+    Point location;
 
     _Context()
     {
@@ -199,6 +200,7 @@ void build_stack_graph(vector<shared_ptr<StackGraphNode>> &stack, string &code, 
         auto id_node = node.childByType("identifier");
         stack.back()->symbol = id_node->text(code);
         stack.back()->_type = id_node->text(code);
+        stack.back()->location = id_node->editorPosition();
 
         auto parameters_node = node.childByType("parameter_list");
         build_stack_graph(stack, code, *parameters_node, ctx);
@@ -206,6 +208,7 @@ void build_stack_graph(vector<shared_ptr<StackGraphNode>> &stack, string &code, 
     else if (node.type() == "type_identifier" && ctx.state == "populate_type")
     {
         ctx.type = node.text(code);
+        ctx.location = node.editorPosition();
     }
     else if ((node.type() == "identifier" || node.type() == "field_identifier") && ctx.state == "declaration")
     {
@@ -275,6 +278,9 @@ void build_stack_graph(vector<shared_ptr<StackGraphNode>> &stack, string &code, 
         StackGraphNode *struct_node = new StackGraphNode(kind, symbol_node_text, node.editorPosition());
         struct_node->parent = stack.back();
         struct_node->_type = symbol_node_text;
+        if(symbol_node != nullptr){
+            struct_node->location = symbol_node->editorPosition();
+        }
         auto struct_node_ptr = shared_ptr<StackGraphNode>(struct_node);
         stack.back()->children.push_back(struct_node_ptr);
         stack.push_back(struct_node_ptr);
