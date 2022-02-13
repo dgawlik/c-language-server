@@ -222,23 +222,26 @@ void _walk_directory(fs::path path, std::regex r, std::function<void(string)> cb
         }
         else
         {
-            auto file = entry.path().filename().string();
-
-            if (std::regex_match(file, r))
-            {
-                std::cout << entry.path().string() << std::endl;
-                cbk(entry.path());
-            }
         }
     }
 }
 
 void StackGraphEngine::loadDirectoryRecursive(string path)
 {
-
     std::regex regex("[a-z0-9\\-_]*\\.(c|h)");
-    _walk_directory(path, regex, [&](string abs_path)
-                    { this->loadFile(abs_path); });
+    for (const auto &entry : fs::recursive_directory_iterator(path))
+    {
+        if (!entry.is_directory())
+        {
+            auto file = entry.path().filename().string();
+
+            if (std::regex_match(file, regex))
+            {
+                std::cout << entry.path().string() << std::endl;
+                this->loadFile(entry.path());
+            }
+        }
+    }
 }
 
 void _walk_tree(shared_ptr<StackGraphNode> node, std::function<bool(shared_ptr<StackGraphNode>)> pred, std::function<void(shared_ptr<StackGraphNode>)> cbk)
