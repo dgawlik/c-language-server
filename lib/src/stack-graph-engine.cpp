@@ -15,7 +15,6 @@ namespace fs = std::filesystem;
 
 using stack_graph::build_stack_graph_tree;
 using stack_graph::Coordinate;
-using stack_graph::CustomHash;
 using stack_graph::Point;
 using stack_graph::StackGraphEngine;
 using stack_graph::StackGraphNode;
@@ -23,10 +22,10 @@ using stack_graph::StackGraphNodeKind;
 
 extern "C" TSLanguage *tree_sitter_c();
 
-void _index(string path, shared_ptr<StackGraphNode> node, unordered_map<Coordinate, shared_ptr<StackGraphNode>, CustomHash> &map)
+void _index(string &path, shared_ptr<StackGraphNode> node, unordered_map<Coordinate, shared_ptr<StackGraphNode>> &map)
 {
     Coordinate coord(path, node->location.line, node->location.column);
-    map.insert({coord, node});
+    map[coord] = node;
     for (auto ch : node->children)
     {
         _index(path, ch, map);
@@ -41,6 +40,8 @@ void StackGraphEngine::loadFile(string path)
 
     auto contents = buffer.str();
     auto source_code = contents.c_str();
+
+    file_stream.close();
 
     // Create a parser.
     TSParser *parser = ts_parser_new();
@@ -57,11 +58,16 @@ void StackGraphEngine::loadFile(string path)
     TSNode root_node = ts_tree_root_node(tree);
 
     auto sg_tree = build_stack_graph_tree(root_node, source_code);
-    sg_tree->symbol = path;
-    // std::cout << sg_tree->repr() << std::endl;
+    if (sg_tree != nullptr)
+    {
+        sg_tree->symbol = path;
+        // std::cout << sg_tree->repr() << std::endl;
 
-    this->translation_units.insert({path, sg_tree});
-    _index(path, sg_tree, this->node_table);
+        this->translation_units[path] = sg_tree;
+        _index(path, sg_tree, this->node_table);
+    }
+
+    ts_tree_delete(tree);
 }
 
 string _pop_stack(string &stack)
@@ -84,18 +90,22 @@ string _pop_stack(string &stack)
 bool _contains_segment(string stack, string segment)
 {
     size_t pos_begin = 0, pos_end;
-    while(true){
+    while (true)
+    {
         pos_end = stack.find(".", pos_begin);
         string seg = stack.substr(pos_begin, pos_end);
 
-        if(seg == segment){
+        if (seg == segment)
+        {
             return true;
         }
 
-        if(pos_end == string::npos){
+        if (pos_end == string::npos)
+        {
             return false;
         }
-        else {
+        else
+        {
             pos_begin = pos_end + 1;
         }
     }
@@ -202,13 +212,13 @@ shared_ptr<Coordinate> StackGraphEngine::resolve(Coordinate coord)
     }
 }
 
-void _walk_directory(string path, std::regex r, std::function<void(string)> cbk)
+void _walk_directory(fs::path path, std::regex r, std::function<void(string)> cbk)
 {
     for (const auto &entry : fs::directory_iterator(path))
     {
         if (entry.is_directory())
         {
-            _walk_directory(entry.path().string(), r, cbk);
+            _walk_directory(entry.path(), r, cbk);
         }
         else
         {
@@ -216,6 +226,7 @@ void _walk_directory(string path, std::regex r, std::function<void(string)> cbk)
 
             if (std::regex_match(file, r))
             {
+                std::cout << entry.path().string() << std::endl;
                 cbk(entry.path());
             }
         }

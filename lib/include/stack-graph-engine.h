@@ -5,6 +5,7 @@
 #include <unordered_set>
 #include <tuple>
 #include <sstream>
+#include <functional>
 
 using std::string;
 using std::stringstream;
@@ -17,20 +18,44 @@ using std::unordered_set;
 
 namespace stack_graph
 {
-    typedef tuple<string, uint32_t, uint32_t> Coordinate;
-
-    class CustomHash
+    struct Coordinate
     {
-    public:
-        // Implement a hash function
-        std::size_t operator()(const Coordinate &k) const
+        string path;
+        uint32_t line;
+        uint32_t column;
+
+        Coordinate(string path, uint32_t line, uint32_t column)
         {
-            std::size_t h1 = std::hash<string>{}(std::get<0>(k));
-            std::size_t h2 = std::hash<uint32_t>{}(std::get<1>(k));
-            std::size_t h3 = std::hash<uint32_t>{}(std::get<2>(k));
-            return 31 * 31 * h3 + 31 * h2 + h1;
+            this->path = path;
+            this->line = line;
+            this->column = column;
+        }
+
+        bool operator==(const Coordinate &other) const
+        {
+            return (path == other.path && line == other.line && column == other.column);
         }
     };
+}
+
+template <>
+struct std::hash<stack_graph::Coordinate>
+{
+    std::size_t operator()(const stack_graph::Coordinate &k) const
+    {
+        using std::hash;
+        using std::size_t;
+        using std::string;
+
+        std::size_t h1 = std::hash<string>{}(k.path);
+        std::size_t h2 = std::hash<uint32_t>{}(k.line);
+        std::size_t h3 = std::hash<uint32_t>{}(k.column);
+        return 31 * 31 * h3 + 31 * h2 + h1;
+    }
+};
+
+namespace stack_graph
+{
 
     struct CrossLink
     {
@@ -70,7 +95,7 @@ namespace stack_graph
 
     struct StackGraphEngine
     {
-        unordered_map<Coordinate, shared_ptr<StackGraphNode>, CustomHash> node_table;
+        unordered_map<Coordinate, shared_ptr<StackGraphNode>> node_table;
         unordered_map<string, shared_ptr<StackGraphNode>> translation_units;
         vector<CrossLink> cross_links;
         unordered_map<string, string> h_to_c;

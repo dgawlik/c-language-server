@@ -65,9 +65,9 @@ TEST(StackGraphEngine, ResolvesReferenceCrossFile)
 
   auto resolution = engine.resolve(Coordinate("/home/dominik/Code/intellisense/c-language-server/corpus/sample2/main.c", 10, 4));
 
-  ASSERT_EQ("/home/dominik/Code/intellisense/c-language-server/corpus/sample2/def1.h", std::get<0>(*resolution));
-  ASSERT_EQ(3, std::get<1>(*resolution));
-  ASSERT_EQ(11, std::get<2>(*resolution));
+  ASSERT_EQ("/home/dominik/Code/intellisense/c-language-server/corpus/sample2/def1.h", resolution->path);
+  ASSERT_EQ(3, resolution->line);
+  ASSERT_EQ(11, resolution->column);
 }
 
 TEST(StackGraphEngine, WorksForSymbolsAsWell)
@@ -80,9 +80,9 @@ TEST(StackGraphEngine, WorksForSymbolsAsWell)
 
   auto resolution = engine.resolve(Coordinate("/home/dominik/Code/intellisense/c-language-server/corpus/sample2/main.c", 6, 11));
 
-  ASSERT_EQ("/home/dominik/Code/intellisense/c-language-server/corpus/sample2/def2.h", std::get<0>(*resolution));
-  ASSERT_EQ(6, std::get<1>(*resolution));
-  ASSERT_EQ(7, std::get<2>(*resolution));
+  ASSERT_EQ("/home/dominik/Code/intellisense/c-language-server/corpus/sample2/def2.h", resolution->path);
+  ASSERT_EQ(6, resolution->line);
+  ASSERT_EQ(7, resolution->column);
 }
 
 
@@ -97,9 +97,6 @@ TEST(StackGraphEngine, ResolvesTypeUses)
   auto results = engine.findUsages(Coordinate("/home/dominik/Code/intellisense/c-language-server/corpus/sample2/def2.h", 6, 7));
 
   ASSERT_EQ(4, results.size());
-  for(auto & res : results){
-      std::cout<< std::get<0>(*res) << " "<< std::get<1>(*res) << " " << std::get<2>(*res) << " " << std::endl;
-  }
 }
 
 TEST(StackGraphEngine, ResolvesSymbolUsages)
@@ -113,9 +110,6 @@ TEST(StackGraphEngine, ResolvesSymbolUsages)
   auto results = engine.findUsages(Coordinate("/home/dominik/Code/intellisense/c-language-server/corpus/sample2/main.c", 6, 24));
 
   ASSERT_EQ(1, results.size());
-  for(auto & res : results){
-      std::cout<< std::get<0>(*res) << " "<< std::get<1>(*res) << " " << std::get<2>(*res) << " " << std::endl;
-  }
 }
 
 

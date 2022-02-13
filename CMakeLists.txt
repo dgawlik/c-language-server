@@ -8,6 +8,7 @@ include_directories(
     lib/include
     deps/google-test/include
     deps/tree-sitter/include
+    deps/json/include
 )
 
 find_library(GTEST gtest HINTS deps/google-test/lib)
@@ -16,8 +17,19 @@ find_library(TREE_SITTER tree-sitter HINTS deps/tree-sitter/lib)
 find_package(Threads REQUIRED)
 
 
-add_executable(c_language_server app/main.cpp deps/tree-sitter-c/parser.c lib/src/stack-graph-tree.cpp lib/src/stack-graph-engine.cpp)
-add_executable(tst tests/syntax-tree-test.cpp tests/engine-test.cpp deps/tree-sitter-c/parser.c lib/src/stack-graph-tree.cpp lib/src/stack-graph-engine.cpp)
+
+add_executable(c_language_server 
+app/main.cpp 
+deps/tree-sitter-c/parser.c 
+lib/src/stack-graph-tree.cpp 
+lib/src/stack-graph-engine.cpp)
+
+add_executable(tst 
+tests/syntax-tree-test.cpp 
+tests/engine-test.cpp 
+deps/tree-sitter-c/parser.c 
+lib/src/stack-graph-tree.cpp 
+lib/src/stack-graph-engine.cpp)
 
 set_target_properties(c_language_server PROPERTIES CXX_STANDARD 17)
 set_target_properties(tst PROPERTIES CXX_STANDARD 17)
