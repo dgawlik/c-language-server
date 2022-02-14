@@ -59,6 +59,12 @@ struct Reactor
             case hash("index"):
                 do_index(parsed["payload"]);
                 break;
+            case hash("resolve"):
+                resolve(parsed["payload"]);
+                break;
+            case hash("find_usages"):
+                find_usages(parsed["payload"]);
+                break;
             default:
                 std::cout << line << std::endl;
             }
@@ -71,16 +77,80 @@ struct Reactor
         
         auto start = high_resolution_clock::now();
         engine.loadDirectoryRecursive(path, excludes);
-        engine.crossLink();
         auto end = high_resolution_clock::now();
         
         auto duration = duration_cast<milliseconds>(end-start);
 
         json res;
         res["command"] = "index";
-        res["status"] = "ok";
+        res["status"] = "done_indexing";
         res["time_ms"] = duration.count();
 
+        std::cout << res.dump() << std::endl;
+
+        start = high_resolution_clock::now();
+        engine.crossLink();
+        end = high_resolution_clock::now();
+        
+        duration = duration_cast<milliseconds>(end-start);
+
+        res["command"] = "index";
+        res["status"] = "done_crosslinking";
+        res["time_ms"] = duration.count();
+
+        std::cout << res.dump() << std::endl;
+    }
+
+    void resolve(json payload){
+        Coordinate coord(
+            payload["path"].get<string>(),
+            payload["line"].get<int>(),
+            payload["column"].get<int>()
+        );
+
+        auto start = high_resolution_clock::now();
+        shared_ptr<Coordinate> result = engine.resolve(coord);
+        auto end = high_resolution_clock::now();
+
+        auto duration = duration_cast<milliseconds>(end-start);
+
+        json res;
+        res["command"] = "resolve";
+        res["time_ms"] = duration.count();
+
+        if(result == nullptr){
+            res["status"] = "not_found";
+        }
+        else {
+            res["status"] = "ok";
+            res["coordinate"] = {{"path", result->path}, {"line", result->line}, {"column", result->column}};
+        }
+
+        std::cout << res.dump() << std::endl;
+    }
+
+    void find_usages(json payload){
+        Coordinate coord(
+            payload["path"].get<string>(),
+            payload["line"].get<int>(),
+            payload["column"].get<int>()
+        );
+
+        auto start = high_resolution_clock::now();
+        vector<shared_ptr<Coordinate>> lst = engine.findUsages(coord);
+        auto end = high_resolution_clock::now();
+
+        auto duration = duration_cast<milliseconds>(end-start);
+
+        json res;
+        res["command"] = "find_usages";
+        res["time_ms"] = duration.count();
+        res["status"] = "ok";
+        res["coordinates"] = {};
+        for(auto & l : lst){
+            res["coordinates"].push_back({{"path", l->path}, {"line", l->line}, {"column", l->column}});
+        }
+        
         std::cout << res.dump() << std::endl;
     }
 

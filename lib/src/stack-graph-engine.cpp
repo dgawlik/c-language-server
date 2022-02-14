@@ -153,6 +153,7 @@ shared_ptr<Coordinate> StackGraphEngine::resolve(Coordinate coord)
     auto search = this->node_table.find(coord);
     if (search == this->node_table.end())
     {
+        std::cout << "resolve: not found" << std::endl;
         return nullptr;
     }
 
@@ -165,8 +166,8 @@ shared_ptr<Coordinate> StackGraphEngine::resolve(Coordinate coord)
 
     string stack = value->symbol;
 
-    // std::cout << "Looking up reference" << std::endl;
-    // std::cout << "Stack: " << stack << std::endl;
+    std::cout << "Looking up reference" << std::endl;
+    std::cout << "Stack: " << stack << std::endl;
 
     shared_ptr<StackGraphNode> current = value;
 
@@ -190,7 +191,7 @@ shared_ptr<Coordinate> StackGraphEngine::resolve(Coordinate coord)
                 break;
             }
             current = next_val;
-            // std::cout << "Node Jump" << std::endl;
+            std::cout << "Node Jump" << std::endl;
         }
         else if (current->kind == StackGraphNodeKind::NAMED_SCOPE)
         {
@@ -201,7 +202,7 @@ shared_ptr<Coordinate> StackGraphEngine::resolve(Coordinate coord)
             current = next_val;
         }
 
-        // std::cout << "Stack: " << stack << std::endl;
+        std::cout << "Stack: " << stack << std::endl;
     }
 
     if (stack == "")
