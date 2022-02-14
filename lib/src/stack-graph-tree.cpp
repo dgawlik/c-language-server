@@ -34,7 +34,11 @@ struct TSNodeWrapper
         this->tsnode = tsnode;
     }
 
-    TSNodeWrapper(TSNodeWrapper&& other) : tsnode(std::move(other.tsnode)){}
+    TSNodeWrapper(TSNodeWrapper &other){
+        this->tsnode = other.tsnode;
+    }
+
+    TSNodeWrapper(TSNodeWrapper &&other) : tsnode(std::move(other.tsnode)) {}
 
     const char *type()
     {
@@ -171,7 +175,7 @@ shared_ptr<StackGraphNode> try_resolve_type(vector<shared_ptr<StackGraphNode>> c
     return nullptr;
 }
 
-void sanitize_translate_reference(string& text)
+void sanitize_translate_reference(string &text)
 {
     RE2::Replace(&text, "[\\[\\(].*[\\]\\)]|\\*", "");
     RE2::Replace(&text, "->", ".");
@@ -342,10 +346,41 @@ void build_stack_graph(vector<shared_ptr<StackGraphNode>> &stack, string &code, 
         n->parent = stack.back();
         stack.back()->children.push_back(n);
     }
+    else if (strcmp(node.type(), "identifier") == 0 && ctx.state == "reference")
+    {
+        ctx.type = node.text(code);
+    }
+    else if (strcmp(node.type(), "call_expression") == 0 && ctx.state == "reference")
+    {
+        auto val = node.childByFieldName("function");
+        build_stack_graph(stack, code, std::move(*val), ctx);
+    }
+    else if (strcmp(node.type(), "pointer_expression") == 0 && ctx.state == "reference")
+    {
+        auto val = node.childByFieldName("argument");
+        build_stack_graph(stack, code, std::move(*val), ctx);
+    }
+    else if (strcmp(node.type(), "subscript_expression") == 0 && ctx.state == "reference")
+    {
+        auto val = node.childByFieldName("argument");
+        build_stack_graph(stack, code, std::move(*val), ctx);
+    }
+    else if (strcmp(node.type(), "field_expression") == 0 && ctx.state == "reference")
+    {
+        auto val = node.childByFieldName("argument");
+        build_stack_graph(stack, code, std::move(*val), ctx);
+        auto val2 = node.childByFieldName("field");
+        ctx.type = ctx.type + "." + val2->text(code);
+    }
     else if (strcmp(node.type(), "identifier") == 0 || strcmp(node.type(), "call_expression") == 0 || strcmp(node.type(), "field_expression") == 0 || strcmp(node.type(), "pointer_expression") == 0 || strcmp(node.type(), "subscript_expression") == 0)
     {
-        auto ref_text = node.text(code);
-        sanitize_translate_reference(ref_text);
+        _Context ctx2;
+        ctx2.state = "reference";
+        ctx2.type = "";
+
+        TSNodeWrapper node_cpy(node);
+        build_stack_graph(stack, code, node_cpy, ctx2);
+        auto ref_text = ctx2.type;
 
         auto ref_node = new StackGraphNode(StackGraphNodeKind::REFERENCE, ref_text, node.editorPosition());
         ref_node->parent = stack.back();
