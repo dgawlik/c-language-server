@@ -9,11 +9,13 @@ include_directories(
     deps/google-test/include
     deps/tree-sitter/include
     deps/json/include
+    deps/re2/include
 )
 
 find_library(GTEST gtest HINTS deps/google-test/lib)
 find_library(GTEST_MAIN gtest_main HINTS deps/google-test/lib)
 find_library(TREE_SITTER tree-sitter HINTS deps/tree-sitter/lib)
+find_library(RE2 re2 HINTS deps/re2/lib)
 find_package(Threads REQUIRED)
 
 
@@ -34,6 +36,6 @@ lib/src/stack-graph-engine.cpp)
 set_target_properties(c_language_server PROPERTIES CXX_STANDARD 17)
 set_target_properties(tst PROPERTIES CXX_STANDARD 17)
 
-target_link_libraries(c_language_server ${TREE_SITTER})
-target_link_libraries(tst ${TREE_SITTER}  Threads::Threads ${GTEST} ${GTEST_MAIN} )
+target_link_libraries(c_language_server Threads::Threads ${TREE_SITTER} ${RE2})
+target_link_libraries(tst ${TREE_SITTER}  Threads::Threads ${GTEST} ${GTEST_MAIN} ${RE2})
 

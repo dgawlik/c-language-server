@@ -212,19 +212,6 @@ shared_ptr<Coordinate> StackGraphEngine::resolve(Coordinate coord)
     }
 }
 
-void _walk_directory(fs::path path, std::regex r, std::function<void(string)> cbk)
-{
-    for (const auto &entry : fs::directory_iterator(path))
-    {
-        if (entry.is_directory())
-        {
-            _walk_directory(entry.path(), r, cbk);
-        }
-        else
-        {
-        }
-    }
-}
 
 void StackGraphEngine::loadDirectoryRecursive(string path)
 {

@@ -10,6 +10,7 @@
 #include <iostream>
 #include <vector>
 #include <regex>
+#include <re2/re2.h>
 
 using std::shared_ptr;
 using std::string;
@@ -170,17 +171,10 @@ shared_ptr<StackGraphNode> try_resolve_type(vector<shared_ptr<StackGraphNode>> c
     return nullptr;
 }
 
-string sanitize_translate_reference(string text)
+void sanitize_translate_reference(string& text)
 {
-    std::regex subscript_regex("\\[.*\\]");
-    std::regex call_regex("\\(.*\\)");
-    std::regex pref_regex("->");
-    std::regex p_regex("\\*");
-
-    text = std::regex_replace(text, subscript_regex, "");
-    text = std::regex_replace(text, call_regex, "");
-    text = std::regex_replace(text, pref_regex, ".");
-    return std::regex_replace(text, p_regex, "");
+    RE2::Replace(&text, "[\\[\\(].*[\\]\\)]|\\*", "");
+    RE2::Replace(&text, "->", ".");
 }
 
 void build_stack_graph(vector<shared_ptr<StackGraphNode>> &stack, string &code, TSNodeWrapper node, _Context &ctx)
@@ -351,7 +345,7 @@ void build_stack_graph(vector<shared_ptr<StackGraphNode>> &stack, string &code, 
     else if (strcmp(node.type(), "identifier") == 0 || strcmp(node.type(), "call_expression") == 0 || strcmp(node.type(), "field_expression") == 0 || strcmp(node.type(), "pointer_expression") == 0 || strcmp(node.type(), "subscript_expression") == 0)
     {
         auto ref_text = node.text(code);
-        ref_text = sanitize_translate_reference(ref_text);
+        sanitize_translate_reference(ref_text);
 
         auto ref_node = new StackGraphNode(StackGraphNodeKind::REFERENCE, ref_text, node.editorPosition());
         ref_node->parent = stack.back();
