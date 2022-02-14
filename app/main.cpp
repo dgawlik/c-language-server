@@ -6,8 +6,11 @@
 #include <string>
 #include <json.hpp>
 #include <cstdlib>
+#include <chrono>
 
 using json = nlohmann::json;
+
+using namespace std::chrono;
 
 using std::shared_ptr;
 using std::string;
@@ -65,13 +68,18 @@ struct Reactor
     void do_index(json payload){
         string path = payload["path"].get<string>();
         auto excludes = payload["excludes"].get<vector<string>>();
+        
+        auto start = high_resolution_clock::now();
         engine.loadDirectoryRecursive(path, excludes);
-        std::cout << "Loading done. Crosslinking..." << std::endl;
         engine.crossLink();
+        auto end = high_resolution_clock::now();
+        
+        auto duration = duration_cast<milliseconds>(end-start);
 
         json res;
         res["command"] = "index";
         res["status"] = "ok";
+        res["time_ms"] = duration.count();
 
         std::cout << res.dump() << std::endl;
     }

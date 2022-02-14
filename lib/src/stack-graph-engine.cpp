@@ -237,7 +237,7 @@ void StackGraphEngine::loadDirectoryRecursive(string path, std::vector<string> e
 
             if (std::regex_match(file, regex))
             {
-                std::cout << path.string() << std::endl;
+                // std::cout << path.string() << std::endl;
                 if (this->loadFile(path))
                 {
                     this->name_to_path.insert({file, path.string()});
@@ -351,8 +351,9 @@ void StackGraphEngine::_visitUnitsInTopologicalOrder(
     {
         return;
     }
+    visited.insert(unit);
 
-    std::cout << unit << std::endl;
+    // std::cout << unit << std::endl;
 
     unordered_map<string, shared_ptr<StackGraphNode>> transitive_defs;
 
@@ -363,16 +364,19 @@ void StackGraphEngine::_visitUnitsInTopologicalOrder(
         if (path_import != "")
         {
 
-            if (cache.find(path_import) == cache.end())
+            if (cache.find(path_import) == cache.end() && visited.find(path_import) == visited.end())
             {
 
                 this->_visitUnitsInTopologicalOrder(cache, visited, h_to_c, path_import);
             }
 
-            auto defs = cache.find(path_import)->second;
-            for (auto &entry : defs)
+            if (cache.find(path_import) != cache.end())
             {
-                transitive_defs.insert(entry);
+                auto defs = cache.find(path_import)->second;
+                for (auto &entry : defs)
+                {
+                    transitive_defs.insert(entry);
+                }
             }
         }
     }
@@ -404,7 +408,6 @@ void StackGraphEngine::_visitUnitsInTopologicalOrder(
         }
     }
 
-    visited.insert(unit);
     cache.insert({unit, transitive_defs});
 }
 
@@ -427,7 +430,7 @@ void StackGraphEngine::crossLink()
                 if (RE2::FullMatch(import, "[a-z0-9\\-_]*\\.h") && abs_import != "")
                 {
                     this->h_to_c[abs_import] = k;
-                    std::cout << k << std::endl;
+                    // std::cout << k << std::endl;
                 }
             }
         }

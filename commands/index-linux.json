@@ -5,7 +5,8 @@
         "excludes": [
             "/drivers/",
             "/Documentation/",
-            "/tools/"
+            "/tools/",
+            "/arch/"
         ]
     }
 }
