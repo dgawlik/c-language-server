@@ -1,0 +1,11 @@
+{
+    "command": "index",
+    "payload": {
+        "path": "/home/dominik/Code/linux",
+        "excludes": [
+            "/drivers/",
+            "/Documentation/",
+            "/tools/"
+        ]
+    }
+}

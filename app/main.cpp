@@ -64,7 +64,9 @@ struct Reactor
 
     void do_index(json payload){
         string path = payload["path"].get<string>();
-        engine.loadDirectoryRecursive(path);
+        auto excludes = payload["excludes"].get<vector<string>>();
+        engine.loadDirectoryRecursive(path, excludes);
+        std::cout << "Loading done. Crosslinking..." << std::endl;
         engine.crossLink();
 
         json res;

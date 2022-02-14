@@ -18,7 +18,7 @@ TEST(StackGraphEngine, ScansDirectory)
   auto path = "/home/dominik/Code/intellisense/c-language-server/corpus/sample2";
   StackGraphEngine engine;
 
-  engine.loadDirectoryRecursive(path);
+  engine.loadDirectoryRecursive(path, {});
 
   ASSERT_EQ(4, engine.translation_units.size());
 }
@@ -28,7 +28,7 @@ TEST(StackGraphEngine, FindsImportsForTU)
   auto path = "/home/dominik/Code/intellisense/c-language-server/corpus/sample2";
   StackGraphEngine engine;
 
-  engine.loadDirectoryRecursive(path);
+  engine.loadDirectoryRecursive(path, {});
 
   ASSERT_EQ("def1.h", engine.importsForTranslationUnit("/home/dominik/Code/intellisense/c-language-server/corpus/sample2/def2.h")[0]);
 }
@@ -38,7 +38,7 @@ TEST(StackGraphEngine, FindsExportedDefinitions)
   auto path = "/home/dominik/Code/intellisense/c-language-server/corpus/sample2";
   StackGraphEngine engine;
 
-  engine.loadDirectoryRecursive(path);
+  engine.loadDirectoryRecursive(path, {});
 
   auto defs = engine.exportedDefinitionsForTranslationUnit("/home/dominik/Code/intellisense/c-language-server/corpus/sample2/def2.h");
 
@@ -50,7 +50,7 @@ TEST(StackGraphEngine, FindsSymbolsInTU)
   auto path = "/home/dominik/Code/intellisense/c-language-server/corpus/sample2";
   StackGraphEngine engine;
 
-  engine.loadDirectoryRecursive(path);
+  engine.loadDirectoryRecursive(path, {});
 
   auto symbols = engine.symbolsForTranslationUnit("/home/dominik/Code/intellisense/c-language-server/corpus/sample2/def2.h");
 }
@@ -60,7 +60,7 @@ TEST(StackGraphEngine, ResolvesReferenceCrossFile)
   auto path = "/home/dominik/Code/intellisense/c-language-server/corpus/sample2";
   StackGraphEngine engine;
 
-  engine.loadDirectoryRecursive(path);
+  engine.loadDirectoryRecursive(path, {});
   engine.crossLink();
 
   auto resolution = engine.resolve(Coordinate("/home/dominik/Code/intellisense/c-language-server/corpus/sample2/main.c", 10, 4));
@@ -75,7 +75,7 @@ TEST(StackGraphEngine, WorksForSymbolsAsWell)
   auto path = "/home/dominik/Code/intellisense/c-language-server/corpus/sample2";
   StackGraphEngine engine;
 
-  engine.loadDirectoryRecursive(path);
+  engine.loadDirectoryRecursive(path, {});
   engine.crossLink();
 
   auto resolution = engine.resolve(Coordinate("/home/dominik/Code/intellisense/c-language-server/corpus/sample2/main.c", 6, 11));
@@ -91,7 +91,7 @@ TEST(StackGraphEngine, ResolvesTypeUses)
   auto path = "/home/dominik/Code/intellisense/c-language-server/corpus/sample2";
   StackGraphEngine engine;
 
-  engine.loadDirectoryRecursive(path);
+  engine.loadDirectoryRecursive(path, {});
   engine.crossLink();
 
   auto results = engine.findUsages(Coordinate("/home/dominik/Code/intellisense/c-language-server/corpus/sample2/def2.h", 6, 7));
@@ -104,12 +104,21 @@ TEST(StackGraphEngine, ResolvesSymbolUsages)
   auto path = "/home/dominik/Code/intellisense/c-language-server/corpus/sample2";
   StackGraphEngine engine;
 
-  engine.loadDirectoryRecursive(path);
+  engine.loadDirectoryRecursive(path, {});
   engine.crossLink();
 
   auto results = engine.findUsages(Coordinate("/home/dominik/Code/intellisense/c-language-server/corpus/sample2/main.c", 6, 24));
 
   ASSERT_EQ(1, results.size());
+}
+
+TEST(StackGraphEngine, DoesntHoldOnSamsungHeader)
+{
+  auto path = "/home/dominik/Code/intellisense/c-language-server/corpus/sample3";
+  StackGraphEngine engine;
+
+  engine.loadDirectoryRecursive(path, {});
+  engine.crossLink();
 }
 
 

@@ -9,7 +9,7 @@
 #include <vector>
 #include <iostream>
 #include <filesystem>
-#include <regex>
+#include <re2/re2.h>
 
 namespace fs = std::filesystem;
 
@@ -32,7 +32,7 @@ void _index(string &path, shared_ptr<StackGraphNode> node, unordered_map<Coordin
     }
 }
 
-void StackGraphEngine::loadFile(string path)
+bool StackGraphEngine::loadFile(string path)
 {
     std::ifstream file_stream(path);
     std::stringstream buffer;
@@ -58,6 +58,7 @@ void StackGraphEngine::loadFile(string path)
     TSNode root_node = ts_tree_root_node(tree);
 
     auto sg_tree = build_stack_graph_tree(root_node, source_code);
+    bool ret = false;
     if (sg_tree != nullptr)
     {
         sg_tree->symbol = path;
@@ -65,9 +66,11 @@ void StackGraphEngine::loadFile(string path)
 
         this->translation_units[path] = sg_tree;
         _index(path, sg_tree, this->node_table);
+        ret = true;
     }
 
     ts_tree_delete(tree);
+    return ret;
 }
 
 string _pop_stack(string &stack)
@@ -182,6 +185,10 @@ shared_ptr<Coordinate> StackGraphEngine::resolve(Coordinate coord)
         else if (current->kind == StackGraphNodeKind::SYMBOL)
         {
             auto next_val = current->jump_to;
+            if (current->jump_to == nullptr)
+            {
+                break;
+            }
             current = next_val;
             // std::cout << "Node Jump" << std::endl;
         }
@@ -212,20 +219,29 @@ shared_ptr<Coordinate> StackGraphEngine::resolve(Coordinate coord)
     }
 }
 
-
-void StackGraphEngine::loadDirectoryRecursive(string path)
+void StackGraphEngine::loadDirectoryRecursive(string path, std::vector<string> excludes)
 {
     std::regex regex("[a-z0-9\\-_]*\\.(c|h)");
     for (const auto &entry : fs::recursive_directory_iterator(path))
     {
         if (!entry.is_directory())
         {
-            auto file = entry.path().filename().string();
+            auto path = entry.path();
+            auto file = path.filename().string();
+
+            if (std::any_of(excludes.begin(), excludes.end(), [&](string r)
+                            { return RE2::PartialMatch(path.string(), r); }))
+            {
+                continue;
+            }
 
             if (std::regex_match(file, regex))
             {
-                std::cout << entry.path().string() << std::endl;
-                this->loadFile(entry.path());
+                std::cout << path.string() << std::endl;
+                if (this->loadFile(path))
+                {
+                    this->name_to_path.insert({file, path.string()});
+                }
             }
         }
     }
@@ -309,12 +325,15 @@ vector<shared_ptr<StackGraphNode>> StackGraphEngine::symbolsForTranslationUnit(s
 
 string StackGraphEngine::resolveImport(string import)
 {
+    auto file = fs::path(import).filename().string();
 
-    for (auto &entry : this->translation_units)
+    const auto found = this->name_to_path.equal_range(file);
+
+    for (auto i = found.first; i != found.second; ++i)
     {
-        if (entry.first.find(import) != string::npos)
+        if (i->second.find(import) != string::npos)
         {
-            return entry.first;
+            return i->second;
         }
     }
 
@@ -332,6 +351,8 @@ void StackGraphEngine::_visitUnitsInTopologicalOrder(
     {
         return;
     }
+
+    std::cout << unit << std::endl;
 
     unordered_map<string, shared_ptr<StackGraphNode>> transitive_defs;
 
@@ -397,15 +418,16 @@ void StackGraphEngine::crossLink()
         auto k = entry.first;
         auto v = entry.second;
 
-        if (std::regex_match(fs::path(k).filename().string(), std::regex("[a-z0-9\\-_]*\\.c")))
+        if (RE2::FullMatch(fs::path(k).filename().string(), "[a-z0-9\\-_]*\\.c"))
         {
             for (auto &import : this->importsForTranslationUnit(k))
             {
                 auto abs_import = this->resolveImport(import);
 
-                if (std::regex_match(import, std::regex("[a-z0-9\\-_]*\\.h")) && abs_import != "")
+                if (RE2::FullMatch(import, "[a-z0-9\\-_]*\\.h") && abs_import != "")
                 {
-                    this->h_to_c.insert({abs_import, k});
+                    this->h_to_c[abs_import] = k;
+                    std::cout << k << std::endl;
                 }
             }
         }

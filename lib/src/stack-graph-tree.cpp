@@ -175,12 +175,6 @@ shared_ptr<StackGraphNode> try_resolve_type(vector<shared_ptr<StackGraphNode>> c
     return nullptr;
 }
 
-void sanitize_translate_reference(string &text)
-{
-    RE2::Replace(&text, "[\\[\\(].*[\\]\\)]|\\*", "");
-    RE2::Replace(&text, "->", ".");
-}
-
 void build_stack_graph(vector<shared_ptr<StackGraphNode>> &stack, string &code, TSNodeWrapper node, _Context &ctx)
 {
 

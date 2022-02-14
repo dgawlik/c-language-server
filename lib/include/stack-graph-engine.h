@@ -97,12 +97,13 @@ namespace stack_graph
     {
         unordered_map<Coordinate, shared_ptr<StackGraphNode>> node_table;
         unordered_map<string, shared_ptr<StackGraphNode>> translation_units;
+        std::multimap<string, string> name_to_path;
         vector<CrossLink> cross_links;
         unordered_map<string, string> h_to_c;
 
-        void loadFile(string path);
+        bool loadFile(string path);
 
-        void loadDirectoryRecursive(string path);
+        void loadDirectoryRecursive(string path, std::vector<string> excludes);
 
         string resolveImport(string import);
 
