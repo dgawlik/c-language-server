@@ -123,7 +123,7 @@ void _do_print_repr_stree(stringstream &ss, StackGraphNode node, int level)
     {
         ss << "|  ";
     }
-    ss << "|-" << kind_names[node.kind] << "[" << node.symbol << "]";
+    ss << "|-" << kind_names[node.kind] << "[" << node.symbol << "]" << "(" << node.location.line << "," << node.location.column << ")";
     if (node.jump_to != nullptr)
     {
         ss << "~> " << node.jump_to->_type;

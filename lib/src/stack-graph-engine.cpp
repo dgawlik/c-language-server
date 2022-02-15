@@ -68,6 +68,9 @@ bool StackGraphEngine::loadFile(string path)
         _index(path, sg_tree, this->node_table);
         ret = true;
     }
+    else {
+        std::cout << "Error parsing source file" << std::endl;
+    }
 
     ts_tree_delete(tree);
     return ret;

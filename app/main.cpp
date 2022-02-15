@@ -65,6 +65,9 @@ struct Reactor
             case hash("find_usages"):
                 find_usages(parsed["payload"]);
                 break;
+            case hash("debug_print_tree"):
+                debug_print_tree(parsed["payload"]);
+                break;
             default:
                 std::cout << line << std::endl;
             }
@@ -152,6 +155,12 @@ struct Reactor
         }
         
         std::cout << res.dump() << std::endl;
+    }
+
+    void debug_print_tree(json payload){
+        auto path = payload["path"].get<string>();
+
+        std::cout << engine.translation_units[path]->repr() << std::endl;
     }
 
 
