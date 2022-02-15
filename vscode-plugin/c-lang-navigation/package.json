@@ -1,0 +1,97 @@
+{
+	"name": "c-lang-navigation",
+	"displayName": "c-lang-navigation",
+	"description": "Navigate large C codebases",
+	"version": "0.0.1",
+	"engines": {
+		"vscode": "^1.64.2"
+	},
+	"categories": [
+		"Other"
+	],
+	"activationEvents": [
+		"onCommand:c-lang-navigation.index"
+	],
+	"main": "./extension.js",
+	"contributes": {
+		"configuration": {
+			"title": "C Language Navigation",
+			"properties": {
+				"c-lang-navigation.rootIndexPath": {
+					"type": "string",
+					"default": "/home/dominik/Code/linux/",
+					"description": "Root path for indexing"
+				},
+				"c-lang-navigation.serverPath": {
+					"type": "string",
+					"default": "/home/dominik/Code/intellisense/c-language-server/build/c_language_server",
+					"description": "Language server path"
+				},
+				"c-lang-navigation.excludePatterns": {
+					"type": "array",
+					"description": "Exclude patterns",
+					"items": {
+						"type": "string"
+					},
+					"default": [
+						"/drivers",
+						"/Documentation",
+						"/tools",
+						"/arch",
+						"/sound"
+					]
+				}
+			}
+		},
+		"keybindings": [
+			{
+				"command": "c-lang-navigation.index",
+				"key": "ctrl+alt+i",
+				"mac": "cmd+i",
+				"when": "editorTextFocus"
+			},
+			{
+				"command": "c-lang-navigation.resolve",
+				"key": "ctrl+alt+r",
+				"mac": "cmd+d",
+				"when": "editorTextFocus"
+			},
+			{
+				"command": "c-lang-navigation.find_usages",
+				"key": "ctrl+alt+u",
+				"mac": "cmd+d",
+				"when": "editorTextFocus"
+			}
+		],
+		"commands": [
+			{
+				"command": "c-lang-navigation.index",
+				"title": "Index Project"
+			},
+			{
+				"command": "c-lang-navigation.resolve",
+				"title": "Resolve"
+			},
+			{
+				"command": "c-lang-navigation.find_usages",
+				"title": "Find usages"
+			}
+		]
+	},
+	"scripts": {
+		"lint": "eslint .",
+		"pretest": "npm run lint",
+		"test": "node ./test/runTest.js"
+	},
+	"devDependencies": {
+		"@types/vscode": "^1.64.0",
+		"@types/glob": "^7.2.0",
+		"@types/mocha": "^9.0.0",
+		"@types/node": "14.x",
+		"eslint": "^8.6.0",
+		"glob": "^7.2.0",
+		"mocha": "^9.1.3",
+		"typescript": "^4.5.4",
+		"@vscode/test-electron": "^2.0.3"
+	}
+}
